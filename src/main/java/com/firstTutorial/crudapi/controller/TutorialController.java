@@ -3,10 +3,13 @@ package com.firstTutorial.crudapi.controller;
 
 import com.firstTutorial.crudapi.model.Tutorial;
 import com.firstTutorial.crudapi.repository.TutorialRepository;
+import com.firstTutorial.crudapi.utils.Utilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,9 +29,28 @@ public class TutorialController {
     public ResponseEntity<Map<String, Object>> getAllTutorials(
             @RequestParam(required = false) String title,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "3") int size){
+            @RequestParam(defaultValue = "3") int size,
+            @RequestParam(defaultValue = "id,desc") String[] sort){
         try {
-            Pageable paging = PageRequest.of(page,size);
+
+
+            List<Order> orders = new ArrayList<Order>();
+
+
+
+            if(sort[0].contains(",")){
+                // sorting more than 2 fields
+                // sortOrder="field, direction"
+                for (String sortOrder: sort) {
+                    String[] _sort = sortOrder.split(",");
+                    orders.add(new Order(Utilities.getSortDirection(_sort[1]),_sort[0]));
+                }
+            } else {
+                // sort=[field, direction]
+                orders.add(new Order(Utilities.getSortDirection(sort[1]),sort[0]));
+            }
+
+            Pageable paging = PageRequest.of(page,size,Sort.by(orders));
 
             Page<Tutorial> pageTuto;
 
@@ -40,6 +62,10 @@ public class TutorialController {
             }
 
             List<Tutorial> tutorials = pageTuto.getContent();
+
+            if (tutorials.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("tutorials",tutorials);
